@@ -114,22 +114,17 @@ func (m *EnvManager) updateFile(path string, newSecrets map[string]string, keysO
 			if len(match) > 2 {
 				key := match[1]
 				if val, ok := newSecrets[key]; ok {
-					// We need to preserve the comment if it exists
+					// Preserve comment if exists
 					comment := ""
 					if idx := strings.Index(match[2], "#"); idx != -1 {
 						comment = " " + strings.TrimSpace(match[2][idx:])
 					}
 
-					if keysOnly {
-						lines = append(lines, fmt.Sprintf("%s=%s", key, comment))
-					} else {
-						// Quote if value has spaces or special chars
-						formattedVal := val
-						if strings.Contains(val, " ") || strings.Contains(val, "#") {
-							formattedVal = fmt.Sprintf("\"%s\"", val)
-						}
-						lines = append(lines, fmt.Sprintf("%s=%s%s", key, formattedVal, comment))
+					formatted := ""
+					if !keysOnly {
+						formatted = formatValue(val)
 					}
+					lines = append(lines, fmt.Sprintf("%s=%s%s", key, formatted, comment))
 					existingKeys[key] = true
 					continue
 				}
@@ -142,25 +137,15 @@ func (m *EnvManager) updateFile(path string, newSecrets map[string]string, keysO
 	// Append any new secrets that weren't in the file
 	for key, val := range newSecrets {
 		if !existingKeys[key] {
-			if keysOnly {
-				lines = append(lines, key+"=")
-			} else {
-				formattedVal := val
-				if strings.Contains(val, " ") || strings.Contains(val, "#") {
-					formattedVal = fmt.Sprintf("\"%s\"", val)
-				}
-				lines = append(lines, fmt.Sprintf("%s=%s", key, formattedVal))
+			formatted := ""
+			if !keysOnly {
+				formatted = formatValue(val)
 			}
+			lines = append(lines, fmt.Sprintf("%s=%s", key, formatted))
 		}
 	}
 
-	// Write back to file
-	content := strings.Join(lines, "\n")
-	if len(lines) > 0 && !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	
-	return os.WriteFile(path, []byte(content), 0644)
+	return writeLines(path, lines)
 }
 
 // Delete removes a key from both files.
@@ -187,16 +172,27 @@ func (m *EnvManager) removeFromFile(path string, keyToDelete string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		match := envLineRegex.FindStringSubmatch(line)
-		if len(match) > 1 && match[1] == keyToDelete {
-			continue // Skip the line we want to delete
+		if len(match) <= 1 || match[1] != keyToDelete {
+			lines = append(lines, line)
 		}
-		lines = append(lines, line)
 	}
 
+	return writeLines(path, lines)
+}
+
+// --- Helpers ---
+
+func formatValue(val string) string {
+	if strings.ContainsAny(val, " #") {
+		return fmt.Sprintf("\"%s\"", val)
+	}
+	return val
+}
+
+func writeLines(path string, lines []string) error {
 	content := strings.Join(lines, "\n")
 	if len(lines) > 0 && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-
 	return os.WriteFile(path, []byte(content), 0644)
 }

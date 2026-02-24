@@ -242,12 +242,12 @@ func GetEmail() string {
 
 // SetEmail stores the user's email in global config.
 func SetEmail(email string) error {
-	config, err := LoadGlobalConfig()
-	if err != nil {
-		config = &GlobalConfig{}
+	c, _ := LoadGlobalConfig()
+	if c == nil {
+		c = &GlobalConfig{}
 	}
-	config.Email = email
-	return SaveGlobalConfig(config)
+	c.Email = email
+	return SaveGlobalConfig(c)
 }
 
 // GetAccessToken returns the current access token, or empty string.
@@ -279,22 +279,22 @@ func GetSelectedWorkspaceID() string {
 
 // SetSelectedWorkspaceID sets the selected workspace for new project creation.
 func SetSelectedWorkspaceID(id string) error {
-	config, err := LoadGlobalConfig()
-	if err != nil {
-		config = &GlobalConfig{}
+	c, _ := LoadGlobalConfig()
+	if c == nil {
+		c = &GlobalConfig{}
 	}
-	config.SelectedWorkspaceID = id
-	return SaveGlobalConfig(config)
+	c.SelectedWorkspaceID = id
+	return SaveGlobalConfig(c)
 }
 
 // StoreWorkspaceCache saves decrypted workspace keys to global config.
 func StoreWorkspaceCache(workspaces map[string]WorkspaceCacheEntry) error {
-	config, err := LoadGlobalConfig()
-	if err != nil {
-		config = &GlobalConfig{}
+	c, _ := LoadGlobalConfig()
+	if c == nil {
+		c = &GlobalConfig{}
 	}
-	config.Workspaces = workspaces
-	return SaveGlobalConfig(config)
+	c.Workspaces = workspaces
+	return SaveGlobalConfig(c)
 }
 
 // GetWorkspaceKey returns the decrypted workspace key for a given workspace ID.
@@ -333,11 +333,11 @@ func GetWorkspaceKey(workspaceID string) ([]byte, error) {
 
 // GetProjectWorkspaceKey returns the workspace key for the current project directory.
 func GetProjectWorkspaceKey() ([]byte, error) {
-	project, err := LoadProjectConfig()
-	if err != nil || project.WorkspaceID == "" {
+	p, err := LoadProjectConfig()
+	if err != nil || p.WorkspaceID == "" {
 		return nil, fmt.Errorf("no project configured in current directory")
 	}
-	return GetWorkspaceKey(project.WorkspaceID)
+	return GetWorkspaceKey(p.WorkspaceID)
 }
 
 // IsAuthenticated checks if the user has a valid session (token + email present).

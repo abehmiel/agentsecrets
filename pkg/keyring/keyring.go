@@ -112,9 +112,9 @@ func keyringFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".agentsecrets")
-	_ = os.MkdirAll(dir, 0700)
-	return filepath.Join(dir, "keyring.json"), nil
+	path := filepath.Join(home, ".agentsecrets", "keyring.json")
+	_ = os.MkdirAll(filepath.Dir(path), 0700)
+	return path, nil
 }
 
 func loadKeyringFile() (map[string]keyEntry, error) {
@@ -169,12 +169,12 @@ func fileGetKey(email, keyType string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("no keys found for %s", email)
 	}
-	var encoded string
+
+	encoded := entry.Public
 	if keyType == "private" {
 		encoded = entry.Private
-	} else {
-		encoded = entry.Public
 	}
+
 	if encoded == "" {
 		return nil, fmt.Errorf("%s key not found for %s", keyType, email)
 	}
@@ -200,20 +200,11 @@ func secretKeyName(projectID, key string) string {
 func SetSecret(projectID, key, value string) error {
 	name := secretKeyName(projectID, key)
 	if useFileBackend {
-		entries, err := loadKeyringFile()
-		if err != nil {
-			return fmt.Errorf("set secret: %w", err)
-		}
-		entry := entries[projectID]
-		if entry.Private == "" { // Reuse private key slot for project ID tracking in this backend if needed, or just store in a new schema
-			// Actually, let's just use a simple key=value map for secrets in the file backend
-		}
-		// For simplicity in the file backend, we'll store secrets as "Secret_{projectID}_{key}"
 		return fileSet(name, value, "")
 	}
 
 	if err := gokeyring.Set(serviceName, name, value); err != nil {
-		return fmt.Errorf("set secret: %w", err)
+		return fmt.Errorf("set secret %s: %w", name, err)
 	}
 	return nil
 }

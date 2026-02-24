@@ -144,10 +144,11 @@ func (s *Service) PerformLogin(email, password string, privateKey, publicKey []b
 	}
 
 	accessToken := coalesce(loginResp.AccessToken, loginResp.Data.Access)
-	refreshToken := coalesce(loginResp.RefreshToken, loginResp.Data.Refresh)
-	expiresAt := coalesce(loginResp.ExpiresAt, loginResp.Data.ExpiresAt)
-
-	if err := config.StoreTokens(accessToken, refreshToken, expiresAt); err != nil {
+	if err := config.StoreTokens(
+		accessToken,
+		coalesce(loginResp.RefreshToken, loginResp.Data.Refresh),
+		coalesce(loginResp.ExpiresAt, loginResp.Data.ExpiresAt),
+	); err != nil {
 		return fmt.Errorf("login: failed to save tokens: %w", err)
 	}
 
@@ -177,26 +178,27 @@ func (s *Service) PerformLogin(email, password string, privateKey, publicKey []b
 		}
 	}
 
-	if len(workspaceCache) > 0 {
-		if err := config.StoreWorkspaceCache(workspaceCache); err != nil {
-			return fmt.Errorf("login: failed to cache workspace keys: %w", err)
-		}
+	if len(workspaceCache) == 0 {
+		return nil
+	}
 
-		// 5. Set personal workspace as default (if no workspace already selected)
-		if config.GetSelectedWorkspaceID() == "" {
-			for id, ws := range workspaceCache {
-				if ws.Type == "personal" {
-					_ = config.SetSelectedWorkspaceID(id)
-					break
-				}
+	if err := config.StoreWorkspaceCache(workspaceCache); err != nil {
+		return fmt.Errorf("login: failed to cache workspace keys: %w", err)
+	}
+
+	// 5. Set personal workspace as default (if none selected)
+	if config.GetSelectedWorkspaceID() == "" {
+		id := ""
+		for k, ws := range workspaceCache {
+			if id == "" || ws.Type == "personal" {
+				id = k
 			}
-			// Fallback: use first workspace if no personal found
-			if config.GetSelectedWorkspaceID() == "" {
-				for id := range workspaceCache {
-					_ = config.SetSelectedWorkspaceID(id)
-					break
-				}
+			if ws.Type == "personal" {
+				break
 			}
+		}
+		if id != "" {
+			_ = config.SetSelectedWorkspaceID(id)
 		}
 	}
 

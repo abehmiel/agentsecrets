@@ -2,8 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/dustin/go-humanize"
 
 	"github.com/The-17/agentsecrets/pkg/config"
 	"github.com/The-17/agentsecrets/pkg/ui"
@@ -39,59 +41,54 @@ var statusCmd = &cobra.Command{
 
 		// Workspace info
 		wsID := config.GetSelectedWorkspaceID()
-		if wsID != "" {
-			globalConfig, err := config.LoadGlobalConfig()
-			if err == nil && globalConfig.Workspaces != nil {
-				if ws, ok := globalConfig.Workspaces[wsID]; ok {
-					wsType := "shared"
-					if ws.Type == "personal" {
-						wsType = "personal"
-					}
-					ui.StatusRow("Selected Workspace:", fmt.Sprintf("%s (%s)", ws.Name, wsType))
-				} else {
-					ui.StatusRow("Selected Workspace:", wsID)
-				}
+		global, _ := config.LoadGlobalConfig()
+		
+		wsDisplay := "—"
+		wsDim := true
+		if wsID != "" && global != nil {
+			if ws, ok := global.Workspaces[wsID]; ok {
+				wsDisplay = fmt.Sprintf("%s (%s)", ws.Name, ws.Type)
+				wsDim = false
+			} else {
+				wsDisplay = wsID
+				wsDim = false
 			}
+		}
+		
+		if wsDim {
+			ui.StatusRowDim("Selected Workspace:", wsDisplay)
 		} else {
-			ui.StatusRowDim("Selected Workspace:", "—")
+			ui.StatusRow("Selected Workspace:", wsDisplay)
 		}
 
 		// Project info
-		project, err := config.LoadProjectConfig()
-		if err == nil && project.ProjectName != "" {
-			projectName := project.ProjectName
-			workspaceName := project.WorkspaceName
-			
-			// If workspace name isn't in project config, try to find it in global
-			if workspaceName == "" {
-				globalConfig, _ := config.LoadGlobalConfig()
-				if ws, ok := globalConfig.Workspaces[project.WorkspaceID]; ok {
+		p, err := config.LoadProjectConfig()
+		if err == nil && p.ProjectName != "" {
+			workspaceName := p.WorkspaceName
+			if workspaceName == "" && global != nil {
+				if ws, ok := global.Workspaces[p.WorkspaceID]; ok {
 					workspaceName = ws.Name
 				}
 			}
 
-			projectDisplay := projectName
+			projectDisplay := p.ProjectName
 			if workspaceName != "" {
 				projectDisplay += fmt.Sprintf(" (in %s)", workspaceName)
 			}
 			ui.StatusRow("Current Project:", projectDisplay)
 
-			// Sync info (Placeholders for now, will be updated in Secret Layer)
-			ui.StatusRow("Secrets:", "0 synced (0 unsynced)")
+			// Sync info
+			syncedCount := 0
+			unsyncedCount := 0
+			if secretsService != nil {
+				if diff, err := secretsService.Diff(); err == nil {
+					syncedCount = len(diff.Unchanged)
+					unsyncedCount = len(diff.Added) + len(diff.Changed) + len(diff.Removed)
+				}
+			}
+			ui.StatusRow("Secrets:", fmt.Sprintf("%d synced (%d unsynced)", syncedCount, unsyncedCount))
 			
-			pushStr := "Never"
-			if project.LastPush != "" {
-				pushStr = project.LastPush
-			}
-			pullStr := "Never"
-			if project.LastPull != "" {
-				pullStr = project.LastPull
-			}
-			ui.StatusRow("Activity:", fmt.Sprintf("Last Push: %s | Last Pull: %s", pushStr, pullStr))
-			
-			if project.Environment != "" {
-				ui.StatusRow("Environment:", project.Environment)
-			}
+			ui.StatusRow("Activity:", fmt.Sprintf("Last Push: %s | Last Pull: %s", formatTime(p.LastPush), formatTime(p.LastPull)))
 		} else {
 			ui.StatusRowDim("Current Project:", "—")
 		}
@@ -99,4 +96,15 @@ var statusCmd = &cobra.Command{
 		fmt.Println()
 		return nil
 	},
+}
+
+func formatTime(rfc3339Str string) string {
+	if rfc3339Str == "" {
+		return "Never"
+	}
+	t, err := time.Parse(time.RFC3339, rfc3339Str)
+	if err != nil {
+		return rfc3339Str
+	}
+	return humanize.Time(t)
 }

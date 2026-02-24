@@ -52,20 +52,13 @@ func (s *Service) List() ([]Project, error) {
 func (s *Service) Create(name, description string) (*Project, error) {
 	workspaceID := config.GetSelectedWorkspaceID()
 	if workspaceID == "" {
-		// Fallback: check if we have any cached workspaces
-		global, err := config.LoadGlobalConfig()
-		if err == nil && len(global.Workspaces) > 0 {
-			// Find personal workspace if available
+		global, _ := config.LoadGlobalConfig()
+		if global != nil {
 			for id, ws := range global.Workspaces {
-				if ws.Type == "personal" {
+				if workspaceID == "" || ws.Type == "personal" {
 					workspaceID = id
-					break
 				}
-			}
-			// Still nothing? Pick the first one
-			if workspaceID == "" {
-				for id := range global.Workspaces {
-					workspaceID = id
+				if ws.Type == "personal" {
 					break
 				}
 			}
@@ -153,11 +146,8 @@ func (s *Service) bindLocally(project *Project) error {
 		return fmt.Errorf("failed to create projects directory: %w", err)
 	}
 
-	local, err := config.LoadProjectConfig()
-	if err != nil {
-		// It might not exist if user hasn't run init in this specific dir, 
-		// but standard practice is that init creates it.
-		// We'll create a default one if Load fails (no file).
+	local, _ := config.LoadProjectConfig()
+	if local == nil {
 		local = &config.ProjectConfig{Environment: "development"}
 	}
 
@@ -167,8 +157,8 @@ func (s *Service) bindLocally(project *Project) error {
 	local.WorkspaceID = project.WorkspaceID
 	
 	// Get workspace name from global cache if available
-	global, err := config.LoadGlobalConfig()
-	if err == nil {
+	global, _ := config.LoadGlobalConfig()
+	if global != nil {
 		if ws, ok := global.Workspaces[project.WorkspaceID]; ok {
 			local.WorkspaceName = ws.Name
 		}

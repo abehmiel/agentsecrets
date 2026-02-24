@@ -85,9 +85,9 @@ func DeriveKeyFromPassword(password, saltHex string) ([]byte, error) {
 // Returns (base64 ciphertext, hex salt).
 func EncryptPrivateKey(privateKey []byte, password string) (ciphertextB64, saltHex string, err error) {
 	// Generate random salt
-	salt := make([]byte, SaltSize)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return "", "", fmt.Errorf("failed to generate salt: %w", err)
+	salt, err := randomBytes(SaltSize)
+	if err != nil {
+		return "", "", err
 	}
 	saltHex = hex.EncodeToString(salt)
 
@@ -98,17 +98,13 @@ func EncryptPrivateKey(privateKey []byte, password string) (ciphertextB64, saltH
 	}
 
 	// Encrypt private key with AES-256-GCM
-	block, err := aes.NewCipher(derivedKey)
+	aesGCM, err := newGCM(derivedKey)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create cipher: %w", err)
+		return "", "", err
 	}
-	aesGCM, err := cipher.NewGCM(block)
+	nonce, err := randomBytes(aesGCM.NonceSize())
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create GCM: %w", err)
-	}
-	nonce := make([]byte, aesGCM.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", "", fmt.Errorf("failed to generate nonce: %w", err)
+		return "", "", err
 	}
 
 	// Seal: nonce is prepended to ciphertext for storage
@@ -130,13 +126,9 @@ func DecryptPrivateKey(encryptedB64, password, saltHex string) ([]byte, error) {
 		return nil, err
 	}
 
-	block, err := aes.NewCipher(derivedKey)
+	aesGCM, err := newGCM(derivedKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cipher: %w", err)
-	}
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GCM: %w", err)
+		return nil, err
 	}
 
 	nonceSize := aesGCM.NonceSize()
@@ -167,30 +159,21 @@ func GenerateKeypair() (privateKey, publicKey []byte, err error) {
 
 // GenerateWorkspaceKey creates a random 32-byte key for AES-256-GCM encryption.
 func GenerateWorkspaceKey() ([]byte, error) {
-	key := make([]byte, KeySize)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		return nil, fmt.Errorf("failed to generate workspace key: %w", err)
-	}
-	return key, nil
+	return randomBytes(KeySize)
 }
 
 // EncryptSecret encrypts a plaintext secret with a workspace key using AES-256-GCM.
 // The nonce is prepended to the ciphertext and returned as a single base64-encoded string.
 func EncryptSecret(plaintext string, workspaceKey []byte) (string, error) {
-	block, err := aes.NewCipher(workspaceKey)
+	aesGCM, err := newGCM(workspaceKey)
 	if err != nil {
-		return "", fmt.Errorf("failed to create cipher: %w", err)
-	}
-
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GCM: %w", err)
+		return "", err
 	}
 
 	// Generate random nonce
-	nonce := make([]byte, aesGCM.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", fmt.Errorf("failed to generate nonce: %w", err)
+	nonce, err := randomBytes(aesGCM.NonceSize())
+	if err != nil {
+		return "", err
 	}
 
 	// Encrypt and prepend nonce
@@ -207,14 +190,9 @@ func DecryptSecret(encryptedB64 string, workspaceKey []byte) (string, error) {
 		return "", fmt.Errorf("failed to decode ciphertext: %w", err)
 	}
 
-	block, err := aes.NewCipher(workspaceKey)
+	aesGCM, err := newGCM(workspaceKey)
 	if err != nil {
-		return "", fmt.Errorf("failed to create cipher: %w", err)
-	}
-
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GCM: %w", err)
+		return "", err
 	}
 
 	nonceSize := aesGCM.NonceSize()
@@ -268,4 +246,26 @@ func DecryptFromUser(privateKey, publicKey, encrypted []byte) ([]byte, error) {
 	}
 
 	return decrypted, nil
+}
+
+// --- Internal Helpers ---
+
+func randomBytes(size int) ([]byte, error) {
+	b := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return nil, fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	return b, nil
+}
+
+func newGCM(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+	return gcm, nil
 }

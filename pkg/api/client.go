@@ -148,15 +148,10 @@ func (c *Client) DecodeError(resp *http.Response) error {
 	resp.Body.Close()
 
 	if err := json.Unmarshal(bodyBytes, &errResp); err == nil {
-		msg := errResp.Message
-		if msg == "" {
-			msg = errResp.Error
-		}
-		if msg == "" {
-			msg = errResp.Detail
-		}
-		if msg != "" {
-			return fmt.Errorf("API error: %s (status %d)", msg, resp.StatusCode)
+		for _, msg := range []string{errResp.Message, errResp.Error, errResp.Detail} {
+			if msg != "" {
+				return fmt.Errorf("API error: %s (status %d)", msg, resp.StatusCode)
+			}
 		}
 	}
 
@@ -180,15 +175,9 @@ func (c *Client) resolveEndpoint(key string, params map[string]string) (string, 
 	}
 
 	category, action := parts[0], parts[1]
-
-	categoryMap, ok := endpointMap[category]
+	path, ok := endpointMap[category][action]
 	if !ok {
-		return "", fmt.Errorf("unknown endpoint category: %q", category)
-	}
-
-	path, ok := categoryMap[action]
-	if !ok {
-		return "", fmt.Errorf("unknown endpoint action: %q in category %q", action, category)
+		return "", fmt.Errorf("unknown endpoint: %s.%s", category, action)
 	}
 
 	// Replace URL parameters like {project_id} with actual values

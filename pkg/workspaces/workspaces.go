@@ -69,10 +69,10 @@ func (s *Service) Create(name string) error {
 		return fmt.Errorf("create workspace: failed to parse response: %w", err)
 	}
 
-	// Load config, defaulting to empty if it doesn't exist yet.
-	cfg, err := config.LoadGlobalConfig()
-	if err != nil {
-		return fmt.Errorf("create workspace: failed to load config: %w", err)
+	// Load config
+	cfg, _ := config.LoadGlobalConfig()
+	if cfg == nil {
+		cfg = &config.GlobalConfig{}
 	}
 	if cfg.Workspaces == nil {
 		cfg.Workspaces = make(map[string]config.WorkspaceCacheEntry)
@@ -119,30 +119,31 @@ func (s *Service) Invite(workspaceID, email, role string) error {
 	// Step 2: encrypt the workspace key for the invitee.
 	cfg, err := config.LoadGlobalConfig()
 	if err != nil {
-		return fmt.Errorf("invite: failed to load config: %w", err)
+		return fmt.Errorf("invite: load config: %w", err)
 	}
 
 	ws, ok := cfg.Workspaces[workspaceID]
 	if !ok {
-		return fmt.Errorf("invite: workspace %s not found in cache", workspaceID)
+		return fmt.Errorf("invite: workspace %s not found", workspaceID)
 	}
 
-	wsKey, err := b64Dec(ws.Key, "invite: invalid workspace key in cache")
+	wsKey, err := b64Dec(ws.Key, "invite: decode ws key")
 	if err != nil {
 		return err
 	}
 
-	encryptedForInvitee, err := crypto.EncryptForUser(recipientPubKey, wsKey)
+	encKey, err := crypto.EncryptForUser(recipientPubKey, wsKey)
 	if err != nil {
-		return fmt.Errorf("invite: encryption failed: %w", err)
+		return fmt.Errorf("invite: encrypt: %w", err)
 	}
 
 	// Step 3: send the invite.
-	inviteResp, err := s.API.Call("workspaces.invite", "POST", map[string]any{
+	data := map[string]any{
 		"email":                   email,
 		"role":                    role,
-		"encrypted_workspace_key": b64Enc(encryptedForInvitee),
-	}, map[string]string{"workspace_id": workspaceID})
+		"encrypted_workspace_key": b64Enc(encKey),
+	}
+	inviteResp, err := s.API.Call("workspaces.invite", "POST", data, map[string]string{"workspace_id": workspaceID})
 	if err != nil {
 		return fmt.Errorf("invite: API call failed: %w", err)
 	}

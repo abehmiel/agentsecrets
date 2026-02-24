@@ -112,17 +112,17 @@ func (s *Service) Get(key string) (string, error) {
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return "", fmt.Errorf("get secret: failed to parse response: %w", err)
+		return "", fmt.Errorf("get secret: decode response: %w", err)
 	}
 
-	workspaceKey, err := config.GetProjectWorkspaceKey()
+	wsKey, err := config.GetProjectWorkspaceKey()
 	if err != nil {
-		return "", fmt.Errorf("get secret: %w", err)
+		return "", err
 	}
 
-	plaintext, err := crypto.DecryptSecret(res.Data.Value, workspaceKey)
+	plaintext, err := crypto.DecryptSecret(res.Data.Value, wsKey)
 	if err != nil {
-		return "", fmt.Errorf("get secret: decryption failed: %w", err)
+		return "", fmt.Errorf("get secret: decrypt: %w", err)
 	}
 
 	// Cache in keychain
@@ -167,14 +167,13 @@ func (s *Service) List(showValues bool) ([]SecretMetadata, error) {
 	}
 
 	if showValues {
-		workspaceKey, err := config.GetProjectWorkspaceKey()
+		wsKey, err := config.GetProjectWorkspaceKey()
 		if err != nil {
-			return nil, fmt.Errorf("list secrets: %w", err)
+			return nil, err
 		}
 
-		for i := range res.Data.Secrets {
-			plaintext, err := crypto.DecryptSecret(res.Data.Secrets[i].Value, workspaceKey)
-			if err == nil {
+		for i, s := range res.Data.Secrets {
+			if plaintext, err := crypto.DecryptSecret(s.Value, wsKey); err == nil {
 				res.Data.Secrets[i].Value = plaintext
 			}
 		}
@@ -209,7 +208,6 @@ func (s *Service) Pull(targetKeys []string) error {
 			continue
 		}
 		secretsMap[s.Key] = s.Value
-		// Sync to OS keychain (Proxy support)
 		_ = keyring.SetSecret(project.ProjectID, s.Key, s.Value)
 	}
 

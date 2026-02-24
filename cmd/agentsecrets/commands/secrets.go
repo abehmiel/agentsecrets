@@ -135,16 +135,11 @@ func runSecretsGet(cmd *cobra.Command, args []string) error {
 
 	err := spinner.New().
 		Title(fmt.Sprintf("Retrieving %s...", key)).
-		Action(func() {
-			value, getErr = secretsService.Get(key)
-		}).
+		Action(func() { value, getErr = secretsService.Get(key) }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if getErr != nil {
-		ui.Error(fmt.Sprintf("Failed to get secret: %v", getErr))
+	if err != nil || getErr != nil {
+		ui.Error(fmt.Sprintf("Get secret: %v", coalesce(err, getErr)))
 		return nil
 	}
 
@@ -161,22 +156,17 @@ func runSecretsList(cmd *cobra.Command, args []string) error {
 	var listErr error
 
 	err := spinner.New().
-		Title(fmt.Sprintf("Fetching secret keys%s...", func() string {
+		Title(fmt.Sprintf("Fetching %s...", func() string {
 			if showValue {
-				return " and values"
+				return "keys and values"
 			}
-			return ""
+			return "keys"
 		}())).
-		Action(func() {
-			list, listErr = secretsService.List(showValue)
-		}).
+		Action(func() { list, listErr = secretsService.List(showValue) }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if listErr != nil {
-		ui.Error("Failed to list secrets: " + listErr.Error())
+	if err != nil || listErr != nil {
+		ui.Error(fmt.Sprintf("List secrets: %v", coalesce(err, listErr)))
 		return nil
 	}
 
@@ -200,11 +190,7 @@ func runSecretsList(cmd *cobra.Command, args []string) error {
 	}
 
 	renderedTable := ui.RenderTable(headers, rows)
-	fmt.Println()
-	fmt.Println(ui.BannerStr("Project Secrets"))
-	fmt.Println(renderedTable)
-	fmt.Println()
-
+	fmt.Printf("\n%s\n%s\n\n", ui.BannerStr("Project Secrets"), renderedTable)
 	return nil
 }
 
@@ -284,22 +270,17 @@ func runSecretsPull(cmd *cobra.Command, args []string) error {
 
 	var pullErr error
 	err = spinner.New().
-		Title(fmt.Sprintf("Smart Pulling %d secrets...", func() int {
+		Title(fmt.Sprintf("Pulling %d secrets...", func() int {
 			if targetKeys == nil {
 				return len(diff.Removed) + len(diff.Changed) + len(diff.Unchanged)
 			}
 			return len(targetKeys)
 		}())).
-		Action(func() {
-			pullErr = secretsService.Pull(targetKeys)
-		}).
+		Action(func() { pullErr = secretsService.Pull(targetKeys) }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if pullErr != nil {
-		ui.Error("Failed to pull secrets: " + pullErr.Error())
+	if err != nil || pullErr != nil {
+		ui.Error(fmt.Sprintf("Pull: %v", coalesce(err, pullErr)))
 		return nil
 	}
 
@@ -310,17 +291,12 @@ func runSecretsPull(cmd *cobra.Command, args []string) error {
 func runSecretsPush(cmd *cobra.Command, args []string) error {
 	var pushErr error
 	err := spinner.New().
-		Title("Encrypting and pushing local secrets...").
-		Action(func() {
-			pushErr = secretsService.Push()
-		}).
+		Title("Pushing secrets...").
+		Action(func() { pushErr = secretsService.Push() }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if pushErr != nil {
-		ui.Error("Failed to push secrets: " + pushErr.Error())
+	if err != nil || pushErr != nil {
+		ui.Error(fmt.Sprintf("Push: %v", coalesce(err, pushErr)))
 		return nil
 	}
 
@@ -334,16 +310,11 @@ func runSecretsDelete(cmd *cobra.Command, args []string) error {
 
 	err := spinner.New().
 		Title(fmt.Sprintf("Deleting %s...", key)).
-		Action(func() {
-			delErr = secretsService.Delete(key)
-		}).
+		Action(func() { delErr = secretsService.Delete(key) }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if delErr != nil {
-		ui.Error("Failed to delete secret: " + delErr.Error())
+	if err != nil || delErr != nil {
+		ui.Error(fmt.Sprintf("Delete: %v", coalesce(err, delErr)))
 		return nil
 	}
 
@@ -356,22 +327,16 @@ func runSecretsDiff(cmd *cobra.Command, args []string) error {
 	var diffErr error
 
 	err := spinner.New().
-		Title("Comparing local and cloud secrets...").
-		Action(func() {
-			diff, diffErr = secretsService.Diff()
-		}).
+		Title("Comparing secrets...").
+		Action(func() { diff, diffErr = secretsService.Diff() }).
 		Run()
 
-	if err != nil {
-		return err
-	}
-	if diffErr != nil {
-		ui.Error("Failed to diff secrets: " + diffErr.Error())
+	if err != nil || diffErr != nil {
+		ui.Error(fmt.Sprintf("Diff: %v", coalesce(err, diffErr)))
 		return nil
 	}
 
-	fmt.Println()
-	fmt.Println(ui.BannerStr("Secret Diff"))
+	fmt.Printf("\n%s\n", ui.BannerStr("Secret Diff"))
 
 	if len(diff.Added) == 0 && len(diff.Removed) == 0 && len(diff.Changed) == 0 {
 		ui.Success("Local and cloud secrets are in sync!")
@@ -379,15 +344,24 @@ func runSecretsDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, k := range diff.Added {
-		fmt.Printf("  %s %s %s\n", ui.SuccessStyle.Render("+"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(new local)"))
+		fmt.Printf("  %s %s %s\n", ui.SuccessStyle.Render("+"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(new)"))
 	}
 	for _, k := range diff.Removed {
-		fmt.Printf("  %s %s %s\n", ui.ErrorStyle.Render("-"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(not found locally)"))
+		fmt.Printf("  %s %s %s\n", ui.ErrorStyle.Render("-"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(missing locally)"))
 	}
 	for k := range diff.Changed {
-		fmt.Printf("  %s %s %s\n", ui.LabelStyle.Render("~"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(value mismatch)"))
+		fmt.Printf("  %s %s %s\n", ui.LabelStyle.Render("~"), ui.BrandStyle.Render(k), ui.DimStyle.Render("(mismatch)"))
 	}
 	fmt.Println()
 
+	return nil
+}
+
+func coalesce(errs ...error) error {
+	for _, e := range errs {
+		if e != nil {
+			return e
+		}
+	}
 	return nil
 }
