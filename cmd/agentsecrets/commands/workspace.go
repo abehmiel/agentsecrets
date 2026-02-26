@@ -12,7 +12,6 @@ import (
 	"github.com/The-17/agentsecrets/pkg/workspaces"
 )
 
-
 var workspaceCmd = &cobra.Command{
 	Use:   "workspace",
 	Short: "Manage workspaces",
@@ -60,7 +59,6 @@ func init() {
 		},
 	)
 }
-
 
 // requireConfig loads the global config and returns an error if the workspace
 // list is empty, printing a helpful hint in that case.
@@ -304,7 +302,6 @@ func runWorkspaceRemove(_ *cobra.Command, args []string) error {
 	ui.Success(fmt.Sprintf("Removed %s from workspace.", email))
 	return nil
 }
-
 
 // firstArg returns args[0] or "" — saves nil-check boilerplate at every call site.
 func firstArg(args []string) string {

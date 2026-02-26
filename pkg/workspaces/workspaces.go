@@ -203,8 +203,6 @@ func (s *Service) RemoveMember(workspaceID, email string) error {
 	return nil
 }
 
-
-
 // b64Enc is a shorthand for base64 standard encoding.
 func b64Enc(b []byte) string {
 	return base64.StdEncoding.EncodeToString(b)

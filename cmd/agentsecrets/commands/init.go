@@ -2,6 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -24,9 +26,10 @@ var initCmd = &cobra.Command{
 	What happens:
 	1. Creates ~/.agentsecrets/ (global config)
 	2. Creates .agentsecrets/ (project config in current directory)
-	3. Prompts to create account or login
-	4. Generates encryption keypair (for new accounts)
-	5. Stores credentials securely`,
+	3. Creates .agent/workflows/api-call.md (teaches AI assistants to use AgentSecrets)
+	4. Prompts to create account or login
+	5. Generates encryption keypair (for new accounts)
+	6. Stores credentials securely`,
 	RunE: runInit,
 }
 
@@ -75,7 +78,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize project config: %w", err)
 	}
 
-	ui.Banner("⚡ AgentSecrets")
+	_ = writeWorkflowFile()
+
+	ui.Banner("AgentSecrets")
 	fmt.Println()
 
 	// 2. Ask: Create account or Login
@@ -198,3 +203,48 @@ func runSignup() error {
 func runLoginFlow() error {
 	return performLogin()
 }
+
+const workflowContent = `---
+description: Make authenticated API calls using AgentSecrets (never exposes secrets)
+---
+
+When the user asks you to make an API call that requires authentication, use AgentSecrets.
+Credentials are resolved from the OS keychain — you will NEVER see the actual secret values.
+
+1. List available secret keys:
+// turbo
+` + "```" + `bash
+agentsecrets secrets list
+` + "```" + `
+
+2. Make the authenticated call:
+` + "```" + `bash
+agentsecrets call --url <URL> --method <METHOD> --bearer <KEY_NAME>
+` + "```" + `
+
+   Other auth styles:
+   - ` + "`" + `--header HeaderName=KEY_NAME` + "`" + ` (custom header)
+   - ` + "`" + `--query param=KEY_NAME` + "`" + ` (query parameter)
+   - ` + "`" + `--basic KEY_NAME` + "`" + ` (basic auth)
+   - ` + "`" + `--body-field json.path=KEY_NAME` + "`" + ` (JSON body path)
+   - ` + "`" + `--form-field field=KEY_NAME` + "`" + ` (form field)
+
+   POST example:
+` + "```" + `bash
+agentsecrets call --url https://api.stripe.com/v1/charges \
+  --method POST --bearer STRIPE_KEY \
+  --body '{"amount":1000,"currency":"usd"}'
+` + "```" + `
+
+3. NEVER ask the user for actual secret values. Use key names from step 1 only.
+4. If a key is missing, tell the user to run: agentsecrets secrets set KEY_NAME=value
+`
+
+func writeWorkflowFile() error {
+	dir := filepath.Join(".", ".agent", "workflows")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "api-call.md"), []byte(workflowContent), 0644)
+}
+

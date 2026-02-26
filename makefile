@@ -30,7 +30,7 @@ help:
 build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) cmd/agentsecrets/main.go
+	$(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/agentsecrets/
 	@echo "✓ Built $(BUILD_DIR)/$(BINARY_NAME)"
 
 # Run tests
@@ -88,24 +88,24 @@ release:
 	@mkdir -p $(BUILD_DIR)/releases
 	
 	# macOS Intel
-	GOOS=darwin GOARCH=amd64 $(GO) build -ldflags "-X main.version=$(VERSION)" \
-		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-darwin-amd64 cmd/agentsecrets/main.go
+	GOOS=darwin GOARCH=amd64 $(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-darwin-amd64 ./cmd/agentsecrets/
 	
 	# macOS Apple Silicon
-	GOOS=darwin GOARCH=arm64 $(GO) build -ldflags "-X main.version=$(VERSION)" \
-		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-darwin-arm64 cmd/agentsecrets/main.go
+	GOOS=darwin GOARCH=arm64 $(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-darwin-arm64 ./cmd/agentsecrets/
 	
 	# Linux
-	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-X main.version=$(VERSION)" \
-		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-linux-amd64 cmd/agentsecrets/main.go
+	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-linux-amd64 ./cmd/agentsecrets/
 	
 	# Linux ARM
-	GOOS=linux GOARCH=arm64 $(GO) build -ldflags "-X main.version=$(VERSION)" \
-		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-linux-arm64 cmd/agentsecrets/main.go
+	GOOS=linux GOARCH=arm64 $(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-linux-arm64 ./cmd/agentsecrets/
 	
 	# Windows
-	GOOS=windows GOARCH=amd64 $(GO) build -ldflags "-X main.version=$(VERSION)" \
-		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-windows-amd64.exe cmd/agentsecrets/main.go
+	GOOS=windows GOARCH=amd64 $(GO) build -ldflags "-X github.com/The-17/agentsecrets/cmd/agentsecrets/commands.Version=$(VERSION)" \
+		-o $(BUILD_DIR)/releases/$(BINARY_NAME)-$(VERSION)-windows-amd64.exe ./cmd/agentsecrets/
 	
 	@echo "✓ Release binaries built in $(BUILD_DIR)/releases/"
 	@ls -lh $(BUILD_DIR)/releases/

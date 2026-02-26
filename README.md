@@ -1,395 +1,345 @@
 # AgentSecrets
 
-> **The first secrets manager built for the AI era**
+> **Your AI agent has root access to your API keys. Fix that.**
 
-Stop pasting API keys into ChatGPT. AgentSecrets lets your AI assistant help with deployments without ever seeing your credentials.
+30,000+ OpenClaw installations compromised. API keys stolen from plaintext `.env` files. The problem isn't OpenClaw — it's every AI agent framework. They all store credentials where any plugin, any skill, any process can read them.
+
+AgentSecrets is a **zero-knowledge credential proxy**. Your agent makes authenticated API calls without ever seeing the actual key values.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev/)
-
----
-
-## The Problem
-
-You're coding with Claude, ChatGPT, or Copilot and need to deploy your app:
-
-```
-You: "Help me deploy to production"
-AI: "Sure! I need your DATABASE_URL, API keys..."
-You: *pastes secrets into chat* 😱
-```
-
-**This is insecure.** Your secrets are now in chat logs, training data, and who knows where else.
-
-## The Solution
-
-AgentSecrets lets AI assistants manage the *workflow* of secrets without ever seeing the actual values:
-
-```bash
-# AI runs this for you
-agentsecrets workspace switch production
-agentsecrets project use my-app
-agentsecrets secrets pull
-
-# Secrets loaded → AI helps deploy
-# AI never sees the values 
-```
-
-**Zero-knowledge for AI**: Your assistant knows secrets *exist* (by key name), but never sees the actual values.
-
----
-
-## Quick Start
-
-### Installation
-
-**macOS/Linux:**
-```bash
-curl -sSL https://get.agentsecrets.com | sh
-```
-
-**Python (includes binary):**
-```bash
-pip install agentsecrets
-```
-
-**From source (Go):**
-```bash
-go install github.com/The-17/agentsecrets/cmd/agentsecrets@latest
-```
-
-### First-Time Setup
-
-```bash
-# Create your account
-agentsecrets init
-
-# Create a project
-agentsecrets project create my-app
-
-# Add secrets
-agentsecrets secrets set DATABASE_URL=postgresql://...
-agentsecrets secrets set API_KEY=sk_live_...
-
-# Or push existing .env
-agentsecrets secrets push
-```
-
-### Use With AI
-
-Tell your AI assistant:
-
-> "I use AgentSecrets for secrets management. Pull my production secrets for the 'my-app' project before deploying."
-
-The AI will run:
-```bash
-agentsecrets workspace switch production
-agentsecrets project use my-app
-agentsecrets secrets pull
-# Your .env is ready, AI never saw the values
-```
-
----
-
-## Features
-
-- **AI-Native**: Built specifically for AI-assisted development workflows
-- **Zero-Knowledge**: AI manages secrets by name, never sees values
-- **Universal**: Works with Python, Node, Go, Rust, Java, PHP, any language
-- **Team-Ready**: Workspaces for collaboration, invite teammates
-- **Secure**: X25519 + Fernet encryption, keys stored in system keychain
-- **Fast**: Single binary, no runtime dependencies
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
 
 ---
 
 ## How It Works
 
-### The Zero-Knowledge Architecture
-
 ```
-┌─────────────┐
-│ AI Assistant│ "Pull production secrets for my-app"
-└──────┬──────┘
-       │ Executes command (never sees values)
-       ▼
-┌─────────────┐
-│agentsecrets │ 1. Fetches encrypted secrets from cloud
-│    CLI      │ 2. Decrypts locally with your key
-└──────┬──────┘ 3. Writes to .env file
-       │
-       ▼
-┌─────────────┐
-│  .env file  │ DATABASE_URL=postgresql://...
-└─────────────┘ API_KEY=sk_live_...
-       │
-       ▼ (AI references by key, not value)
-┌─────────────┐
-│  Your App   │ process.env.DATABASE_URL
-└─────────────┘
+Your Agent                    AgentSecrets                 Upstream API
+    |                              |                            |
+    |-- "use STRIPE_KEY" --------->|                            |
+    |                              |-- OS keychain lookup ----->|
+    |                              |<-- real key value ---------|
+    |                              |                            |
+    |                              |-- inject into request ---->|
+    |                              |-- forward to API --------->|
+    |                              |<-- API response -----------|
+    |                              |                            |
+    |<-- response only ------------|                            |
+    |                              |                            |
+    |  Never sees: sk_test_51H...  |                            |
 ```
 
-**What AI Knows**: "The app needs DATABASE_URL and API_KEY"  
-**What AI Doesn't Know**: The actual values  
-
-### Security Model
-
-1. **Secrets encrypted** on your machine before upload
-2. **Server stores** encrypted blobs (can't decrypt them)
-3. **Your key** lives in system keychain (Keychain on Mac, Secret Service on Linux, Credential Manager on Windows)
-4. **AI executes** commands but never reads `.env` file
-5. **Zero-knowledge** maintained end-to-end
+Your agent says **"use STRIPE_KEY"**. AgentSecrets resolves the real value from your OS keychain, injects it into the HTTP request, and returns only the response. The key value never enters agent memory, never appears in chat logs, never touches the filesystem.
 
 ---
 
-## Commands
+## Quick Start
 
-### Authentication
 ```bash
-agentsecrets init                    # Create account
-agentsecrets login                   # Login to existing account
+# Install
+pip install agentsecrets
+
+# Create account + encryption keys
+agentsecrets init
+
+# Create a project (secrets are organized by project)
+agentsecrets project create my-app
+
+# Store your API keys in the OS keychain
+agentsecrets secrets set STRIPE_KEY=sk_test_51Hxxxxx
+agentsecrets secrets set OPENAI_KEY=sk-proj-xxxxxxx
+
+# Make an authenticated API call (agent never sees the key)
+agentsecrets call --url https://api.stripe.com/v1/balance --bearer STRIPE_KEY
 ```
 
-### Workspaces
+---
+
+## Why You Need This
+
+### Before AgentSecrets
+```
+~/.openclaw/.env              ← plaintext, readable by any process
+~/.openclaw/openclaw.json     ← plaintext
+Agent memory & chat logs      ← keys persist after use
+```
+A malicious skill, an infostealer, or a single RCE = **all your keys compromised**.
+
+### With AgentSecrets
+```
+OS Keychain (encrypted)       ← protected by system authentication
+Agent sees key NAMES only     ← "STRIPE_KEY", never "sk_test_51H..."
+Full audit trail              ← who used what, when (names only, never values)
+```
+A malicious skill can't steal what it never sees.
+
+| | Default (`.env`) | With AgentSecrets |
+|---|---|---|
+| Storage | Plaintext files | OS keychain (encrypted) |
+| Agent sees values | ✅ Yes | ❌ Never |
+| Malicious plugin risk | Can read all keys | Nothing to steal |
+| Chat log exposure | Possible | Impossible |
+| Audit trail | None | Full JSONL log |
+| Breach impact | All keys exposed | Keys safe |
+
+---
+
+## 6 Auth Styles — Every API Covered
+
 ```bash
-agentsecrets workspace create "Team Name"     # Create workspace
-agentsecrets workspace list                   # List all workspaces
-agentsecrets workspace switch "Team Name"     # Switch workspace
-agentsecrets workspace invite user@email.com  # Invite teammate
+# Bearer token (Stripe, OpenAI, GitHub)
+agentsecrets call --url https://api.stripe.com/v1/balance --bearer STRIPE_KEY
+
+# Custom header (SendGrid, AWS Gateway)
+agentsecrets call --url https://api.sendgrid.com/v3/mail/send --header X-Api-Key=SENDGRID_KEY
+
+# Query parameter (Google Maps, weather APIs)
+agentsecrets call --url "https://maps.googleapis.com/maps/api/geocode/json" --query key=GMAP_KEY
+
+# Basic auth (Jira, legacy REST)
+agentsecrets call --url https://jira.example.com/rest/api/2/issue --basic JIRA_CREDS
+
+# JSON body injection
+agentsecrets call --url https://api.example.com/auth --body-field client_secret=SECRET
+
+# Form field injection
+agentsecrets call --url https://oauth.example.com/token --form-field api_key=KEY
 ```
 
-### Projects
+Combine multiple credentials in one call:
 ```bash
-agentsecrets project create my-app      # Create project
-agentsecrets project list               # List projects
-agentsecrets project use my-app         # Switch to project
+agentsecrets call --url https://api.example.com/data --bearer AUTH_TOKEN --header X-Org-ID=ORG_SECRET
+```
+
+---
+
+## Integrations
+
+### OpenClaw
+
+Set up a dedicated project to store all your OpenClaw credentials:
+
+```bash
+# One-time setup
+pip install agentsecrets
+agentsecrets init
+agentsecrets project create OPENCLAW_MANAGER
+agentsecrets secrets set STRIPE_KEY=sk_test_xxx
+agentsecrets secrets set OPENAI_KEY=sk-proj-xxx
+```
+
+Install the skill:
+```bash
+# From ClawHub (when available)
+openclaw skill install agentsecrets
+
+# Or manual install
+cp -r integrations/openclaw ~/.openclaw/skills/agentsecrets
+```
+
+Then just ask your agent:
+> "Check my Stripe balance"
+
+The agent runs `agentsecrets call --bearer STRIPE_KEY` under the hood. You see the balance. The agent never sees `sk_test_51H...`.
+
+### Claude Desktop & Cursor (MCP)
+
+Auto-configure with one command:
+```bash
+agentsecrets mcp install
+```
+
+Or add manually to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "agentsecrets": {
+      "command": "/path/to/agentsecrets",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+Ask Claude: *"Check my Stripe balance"* → uses `api_call` tool → you see the response, Claude never sees the key.
+
+### HTTP Proxy (Any Agent)
+
+For agents that run shell commands or make HTTP requests:
+
+```bash
+# Start proxy
+agentsecrets proxy start
+
+# Agent sends requests with injection headers
+curl http://localhost:8765/proxy \
+  -H "X-AS-Target-URL: https://api.stripe.com/v1/balance" \
+  -H "X-AS-Inject-Bearer: STRIPE_KEY"
+```
+
+See [PROXY.md](docs/PROXY.md) for the full proxy reference.
+
+### AI Workflow File
+
+`agentsecrets init` creates a `.agent/workflows/api-call.md` that teaches any AI assistant (Gemini, Copilot, etc.) how to use AgentSecrets automatically.
+
+---
+
+## Audit Trail
+
+Every proxied call is logged. Key **names** only — never values:
+
+```bash
+agentsecrets proxy logs --last 5
+```
+
+```
+Time      Method  Target URL                              Secrets     Auth    Status  Duration
+01:15:00  GET     https://api.stripe.com/v1/balance       STRIPE_KEY  bearer  200     245ms
+01:16:30  POST    https://api.openai.com/v1/chat/...      OPENAI_KEY  bearer  200     1203ms
+```
+
+The log struct has no field for values — it's structurally impossible to log them.
+
+---
+
+## Full Command Reference
+
+### Account
+```bash
+agentsecrets init                            # Create account or login
+agentsecrets login                           # Login to existing account
+agentsecrets logout                          # Clear session
+agentsecrets status                          # Show session info
+```
+
+### Workspaces & Projects
+```bash
+agentsecrets workspace list                  # List workspaces
+agentsecrets workspace create "Team Name"    # Create workspace
+agentsecrets workspace switch "Team Name"    # Switch workspace
+agentsecrets workspace invite user@email.com # Invite teammate
+
+agentsecrets project create my-app           # Create project
+agentsecrets project list                    # List projects
+agentsecrets project use my-app              # Select project
 ```
 
 ### Secrets
 ```bash
-agentsecrets secrets set KEY=value      # Set a secret
-agentsecrets secrets get KEY            # Get a secret (you see it, AI doesn't)
-agentsecrets secrets list               # List secret keys (not values)
-agentsecrets secrets push               # Upload .env file
-agentsecrets secrets pull               # Download to .env file
-agentsecrets secrets remove KEY         # Remove a secret
+agentsecrets secrets set KEY=value           # Store a secret
+agentsecrets secrets get KEY                 # Retrieve a secret
+agentsecrets secrets list                    # List key names
+agentsecrets secrets push                    # Upload local .env to cloud
+agentsecrets secrets pull                    # Download cloud secrets to .env
+agentsecrets secrets delete KEY              # Remove a secret
+agentsecrets secrets diff                    # Compare local vs cloud
 ```
 
----
-
-## AI Integration
-
-### Claude Skill
-
-When using Claude with computer use, AgentSecrets skill teaches Claude to:
-- Pull secrets before deployments
-- Never display secret values
-- Reference secrets by key name only
-- Help manage multi-environment workflows
-
-**Coming soon**: Official Claude skill in MCP registry
-
-### ChatGPT
-
-Add to custom instructions:
-```
-When I ask you to deploy or work with secrets, use AgentSecrets CLI.
-Never ask me to paste secrets. Commands:
-- agentsecrets secrets pull (load secrets)
-- agentsecrets workspace switch <env> (change environment)
-Reference secrets by key name only, never display values.
-```
-
-### GitHub Copilot
-
-AgentSecrets works seamlessly in Copilot workflows. Copilot can suggest:
-```javascript
-// Load secrets from AgentSecrets
-// Run: agentsecrets secrets pull
-const apiKey = process.env.API_KEY;
-```
-
----
-
-## Use Cases
-
-### Multi-Environment Deployment
+### Credential Proxy
 ```bash
-# Staging
-agentsecrets workspace switch staging
-agentsecrets secrets pull
-npm run deploy
-
-# Production
-agentsecrets workspace switch production
-agentsecrets secrets pull
-npm run deploy
-```
-
-### Team Onboarding
-```bash
-# New developer joins
-agentsecrets login
-agentsecrets project use team-app
-agentsecrets secrets pull
-# Ready to code, no asking teammates for credentials
-```
-
-### Microservices
-```bash
-# Each service has its own project
-agentsecrets project use auth-service && agentsecrets secrets pull
-agentsecrets project use api-gateway && agentsecrets secrets pull
-agentsecrets project use payment-service && agentsecrets secrets pull
+agentsecrets call --url <URL> --bearer KEY   # One-shot authenticated call
+agentsecrets proxy start [--port 8765]       # Start HTTP proxy
+agentsecrets proxy status                    # Check proxy
+agentsecrets proxy logs [--last N]           # View audit log
+agentsecrets mcp serve                       # Start MCP server
+agentsecrets mcp install                     # Auto-configure AI tools
 ```
 
 ---
 
-## Comparison
+## Security Model
 
-| Feature | AgentSecrets | 1Password | Vault | AWS Secrets | Doppler |
-|---------|--------------|-----------|-------|-------------|---------|
-| AI-Native | ✅ Built for it | ❌ | ❌ | ❌ | ❌ |
-| Zero-Knowledge | ✅ Yes | ✅ Yes | ⚠️ Optional | ❌ No | ❌ No |
-| Language-Agnostic | ✅ Universal binary | ⚠️ CLI + GUI | ✅ Yes | ⚠️ AWS-focused | ✅ Yes |
-| Team Workspaces | ✅ Built-in | ✅ Vaults | ⚠️ Complex | ⚠️ IAM roles | ✅ Projects |
-| Free Tier | ✅ Generous | ❌ Paid only | ✅ Open source | ⚠️ AWS costs | ⚠️ Limited |
-| Setup Time | ⚡ 1 minute | ⏱️ 5 minutes | ⏱️ 15+ minutes | ⏱️ 30+ minutes | ⏱️ 10 minutes |
+| Layer | Implementation |
+|-------|---------------|
+| Key exchange | X25519 (NaCl SealedBox) |
+| Secret encryption | AES-256-GCM |
+| Key derivation | Argon2id |
+| Key storage | OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) |
+| Transport | HTTPS / TLS |
+| Server | Zero-knowledge — stores encrypted blobs only |
 
----
-
-## Development Status
-
-**Current**: Alpha / Active Development  
-**Stability**: API may change  
-**Production Ready**: Not yet, use at your own risk
-
-We're building in public. Watch the repo for updates.
-
-### Roadmap
-
-- [x] Core CLI in Go
-- [x] Workspaces & Projects
-- [x] Secrets encryption
-- [ ] Multi-platform binaries (macOS, Linux, Windows)
-- [ ] Claude skill (MCP)
-- [ ] ChatGPT integration
-- [ ] Homebrew tap
-- [ ] npm/pip wrappers
-- [ ] Web dashboard
-- [ ] Audit logs
-- [ ] Secret rotation
-- [ ] 1.0 release
-
----
-
-## Architecture
-
-Built with Go for universal compatibility:
-
-- **Crypto**: X25519 (key exchange) + Fernet (symmetric encryption)
-- **Keyring**: System keychain integration (keyring library)
-- **API**: RESTful backend (coming from SecretsCLI infrastructure)
-- **Distribution**: Single binary, ~5-10MB
-
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for deep dive.
-
----
-
-## Contributing
-
-We're building this in the open and would love your help!
-
-- **Found a bug?** [Open an issue](https://github.com/The-17/agentsecrets/issues)
-- **Have an idea?** [Start a discussion](https://github.com/The-17/agentsecrets/discussions)
-- **Want to contribute?** Check [CONTRIBUTING.md](docs/CONTRIBUTING.md)
-
-### Quick Contribution Guide
-
-```bash
-# Fork the repo, then:
-git clone https://github.com/YOUR_USERNAME/agentsecrets
-cd agentsecrets
-go mod download
-go run cmd/agentsecrets/main.go --help
-
-# Make changes, test
-go test ./...
-
-# Submit PR
-```
-
----
-
-## Related Projects
-
-- **[SecretsCLI](https://github.com/The-17/SecretsCLI)** - Original Python implementation
-- **Coming**: Node.js SDK, Python SDK, Rust SDK
-
----
-
-## Security
+- Secrets encrypted **client-side** before upload
+- Private keys never leave your OS keychain
+- Server can't decrypt your secrets (by design)
+- Audit logs record key **names**, never **values**
 
 ### Reporting Vulnerabilities
 
-**DO NOT** open public issues for security vulnerabilities.
+**DO NOT** open public issues for security vulnerabilities.  
+Email: hello@theseventeen.co — we respond within 24 hours.
 
-Email: hello@theseventeen.co
+---
 
-We'll respond within 24 hours.
+## Development
 
-### Security Model
+**Status**: Alpha / Active Development  
+**Stability**: API stable, may add features  
 
-- Secrets encrypted client-side before upload
-- Keys stored in OS keychain, never in plaintext
-- Zero-knowledge: server can't decrypt your secrets
-- TLS for all API communication
-- Regular security audits (planned)
+```bash
+# Clone and build
+git clone https://github.com/The-17/agentsecrets
+cd agentsecrets
+go mod download
+make build
+
+# Run tests
+make test
+
+# Format + lint + test
+make pre-commit
+```
+
+### Roadmap
+
+- [x] Core CLI (10 commands)
+- [x] Proxy Engine (6 auth styles)
+- [x] MCP Server (Claude Desktop, Cursor)
+- [x] HTTP Proxy Server
+- [x] OpenClaw Integration
+- [x] Audit Logging
+- [ ] Multi-platform release binaries
+- [ ] Web dashboard
+- [ ] Secret rotation
+- [ ] 1Password / Vault import
+- [ ] 1.0 release
 
 ---
 
 ## FAQ
 
-**Q: How is this different from SecretsCLI?**  
-A: AgentSecrets is the Go rewrite of SecretsCLI, designed specifically for AI-assisted development. It's language-agnostic and AI-native.
+**How is this different from `.env` files?**  
+`.env` files are plaintext on disk. Any process can read them. AgentSecrets stores keys in your OS keychain (encrypted, system-protected) and injects them at request time.
 
-**Q: Can I use this without AI?**  
-A: Absolutely! It's a great secrets manager for any developer, with or without AI assistance.
+**Can I use this without AI?**  
+Yes. `agentsecrets call` is useful for any developer who wants to make API calls without credentials in shell history.
 
-**Q: Is it free?**  
-A: Yes
+**What if the server gets hacked?**  
+Your secrets are safe. The server only stores encrypted blobs it can't read. Your decryption key is in your OS keychain, not on the server.
 
-**Q: What if the server gets hacked?**  
-A: Your secrets are encrypted with your key. The server only has encrypted blobs it can't read.
+**Does it work with [language]?**  
+Yes. AgentSecrets is a standalone CLI binary that works with any language, framework, or deployment tool.
 
-**Q: Does this work with [language]?**  
-A: Yes! AgentSecrets is a universal CLI that works with Python, Node, Go, Rust, Java, PHP, Ruby, and any other language.
-
-**Q: How do I migrate from 1Password/Vault/etc?**  
-A: Export your secrets to a `.env` file, then `agentsecrets secrets push`. Migration guides coming soon.
+**What about Docker?**  
+Docker isolates your agent but your keys are still plaintext *inside* the container. AgentSecrets fixes the root cause: agents should never have access to key values at all.
 
 ---
 
 ## Links
 
-- **Website**: [agentsecrets.com](https://agentsecrets.com) (coming soon)
-- **GitHub**: [github.com/The-17/agentsecrets](https://github.com/The-17/agentsecrets)
-- **Docs**: [docs.agentsecrets.com](https://docs.agentsecrets.com) (coming soon)
-- **Discord**: [discord.gg/agentsecrets](https://discord.gg/agentsecrets) (coming soon)
+- [Architecture](docs/ARCHITECTURE.md) — deep dive into the security model
+- [Proxy Reference](docs/PROXY.md) — full HTTP proxy documentation
+- [Contributing](docs/CONTRIBUTING.md) — how to help
+- [Quick Start](docs/QUICKSTART.md) — detailed setup guide
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
-## Credits
+Built by [The Seventeen](https://github.com/The-17)
 
-Built with ❤️ by [The Seventeen](https://github.com/The-17)
-
-Powered by the same infrastructure as [SecretsCLI](https://github.com/The-17/SecretsCLI)
-
----
-
-**Star this repo if you believe developers deserve better secrets management in the AI era** ⭐
+**Your keys deserve better than a plaintext file.** ⭐

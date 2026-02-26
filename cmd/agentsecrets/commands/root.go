@@ -64,4 +64,7 @@ func init() {
 	rootCmd.AddCommand(workspaceCmd)
 	rootCmd.AddCommand(projectCmd)
 	rootCmd.AddCommand(secretsCmd)
+	rootCmd.AddCommand(proxyCmd)
+	rootCmd.AddCommand(mcpCmd)
+	rootCmd.AddCommand(callCmd)
 }

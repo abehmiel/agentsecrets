@@ -3,7 +3,9 @@ package projects
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+
 	"github.com/The-17/agentsecrets/pkg/api"
 	"github.com/The-17/agentsecrets/pkg/config"
 )
@@ -34,7 +36,7 @@ func (s *Service) List() ([]Project, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, s.API.DecodeError(resp)
 	}
 
@@ -83,7 +85,7 @@ func (s *Service) Create(name, description string) (*Project, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 201 {
+	if resp.StatusCode != http.StatusCreated {
 		return nil, s.API.DecodeError(resp)
 	}
 
@@ -120,7 +122,7 @@ func (s *Service) Use(name string) (*Project, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, s.API.DecodeError(resp)
 	}
 
