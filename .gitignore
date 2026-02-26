@@ -48,6 +48,11 @@ bin/
 *.egg-info/
 node_modules/
 .npm/
+env/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
 
 # Temporary files
 tmp/
