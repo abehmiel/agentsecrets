@@ -45,6 +45,9 @@ config.json
 dist/
 build/
 bin/
+*.egg-info/
+node_modules/
+.npm/
 
 # Temporary files
 tmp/

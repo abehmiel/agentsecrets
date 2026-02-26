@@ -8,7 +8,7 @@ import tempfile
 import shutil
 import stat
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 GITHUB_REPO = "The-17/agentsecrets"
 
 def get_platform_info():
@@ -107,8 +107,16 @@ def ensure_binary():
         return binary_path
         
     except Exception as e:
-        # Fallback to checking if it's already in the PATH
+        # Fallback to checking if a real binary is already in the PATH
         system_binary = shutil.which("agentsecrets")
-        if system_binary:
+        # Ensure we don't pick up this Python wrapper itself (infinite loop)
+        if system_binary and not system_binary.endswith(".py") and "site-packages" not in system_binary:
             return system_binary
-        raise Exception(f"Failed to download AgentSecrets binary from {url}: {e}")
+            
+        raise Exception(
+            f"Failed to download AgentSecrets binary from {url}.\n"
+            f"Error: {e}\n\n"
+            "TIP: This usually happens if the version hasn't been released on GitHub yet.\n"
+            "Please run: git tag v1.0.0 && git push origin v1.0.0\n"
+            "This will trigger the build that makes this binary available."
+        )

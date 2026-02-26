@@ -8,7 +8,7 @@ AgentSecrets is a **zero-knowledge credential proxy**. Your agent makes authenti
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
-[![ClawHub](https://img.shields.io/badge/ClawHub-SteppaCodes/agentsecrets-EB5C27?logo=anthropic)](https://clawhub.ai/SteppaCodes/agentsecrets)
+[![ClawHub](https://img.shields.io/badge/ClawHub-The--17/agentsecrets-EB5C27?logo=anthropic)](https://clawhub.ai/The-17/agentsecrets)
 
 ---
 
@@ -44,10 +44,12 @@ curl -sSL https://get.agentsecrets.com | sh
 **npm / npx (Universal):**
 ```bash
 # Run without installing
-npx agentsecrets init
+npx @the-17/agentsecrets init
+# or
+npx @the-17/agentsecrets mcp install
 
 # Install globally
-npm install -g agentsecrets
+npm install -g @the-17/agentsecrets
 ```
 
 **Homebrew:**
@@ -176,7 +178,7 @@ The agent runs `agentsecrets call --bearer STRIPE_KEY` under the hood. You see t
 
 Auto-configure with one command:
 ```bash
-agentsecrets mcp install
+npx @the-17/agentsecrets mcp install
 ```
 
 Or add manually to `claude_desktop_config.json`:
@@ -328,11 +330,11 @@ make pre-commit
 - [x] HTTP Proxy Server
 - [x] OpenClaw Integration
 - [x] Audit Logging
-- [ ] Multi-platform release binaries
+- [x] Multi-platform release binaries
 - [ ] Web dashboard
 - [ ] Secret rotation
 - [ ] 1Password / Vault import
-- [ ] 1.0 release
+- [x] 1.0 release
 
 ---
 
@@ -359,7 +361,7 @@ Docker isolates your agent but your keys are still plaintext *inside* the contai
 
 - [Architecture](docs/ARCHITECTURE.md) — deep dive into the security model
 - [Proxy Reference](docs/PROXY.md) — full HTTP proxy documentation
-- [ClawHub Registry](https://clawhub.ai/SteppaCodes/agentsecrets) — official OpenClaw skill
+- [ClawHub Registry](https://clawhub.ai/The-17/agentsecrets) — official OpenClaw skill
 - [Contributing](docs/CONTRIBUTING.md) — how to help
 - [Quick Start](docs/QUICKSTART.md) — detailed setup guide
 

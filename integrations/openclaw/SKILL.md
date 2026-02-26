@@ -1,7 +1,7 @@
 ---
 name: agentsecrets
 description: Zero-knowledge credential management — make authenticated API calls without exposing your keys
-version: 1.0.2
+version: 1.0.0
 tags:
   - security
   - credentials
@@ -25,9 +25,9 @@ requires:
     - name: agentsecrets
       description: The AgentSecrets CLI binary
       install: |
-        - npx agentsecrets (Run without install)
-        - brew install The-17/tap/agentsecrets (macOS)
-        - pip install git+https://github.com/The-17/agentsecrets#subdirectory=pypi (Python/Universal)
+        - npx @the-17/agentsecrets (Run without install)
+        - brew install The-17/tap/agentsecrets (macOS/Linux)
+        - pip install agentsecrets (Python/Universal)
         - go install github.com/The-17/agentsecrets/cmd/agentsecrets@latest (Go devs)
 files:
   - "scripts/*"
@@ -58,11 +58,11 @@ agentsecrets --version 2>/dev/null && echo "INSTALLED" || echo "NOT_INSTALLED"
 **If NOT_INSTALLED**, detect the environment and provide the best installation command for the user to run:
 
 1.  **Check for Node.js + npx**: `which npx`
-    - If found, tell user: "You can run this immediately without installation using `npx agentsecrets`. Just let me know if you want to proceed."
+    - If found, tell user: "You can run this immediately without installation using `npx @the-17/agentsecrets`. Just let me know if you want to proceed."
 2.  **Check for macOS + Homebrew**: `which brew`
     - If found, tell user: "Please run `brew install The-17/tap/agentsecrets` in your terminal to install the AgentSecrets core."
 3.  **Check for Python**: `which pip`
-    - Tell user: "Please run `pip install git+https://github.com/The-17/agentsecrets#subdirectory=pypi` in your terminal to install the AgentSecrets core."
+    - Tell user: "Please run `pip install agentsecrets` in your terminal to install the AgentSecrets core."
 4.  **Check for Go environment**: `which go`
     - If user is a Go dev, tell them: "Please run `go install github.com/The-17/agentsecrets/cmd/agentsecrets@latest` to install the AgentSecrets core."
 
