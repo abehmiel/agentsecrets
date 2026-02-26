@@ -55,7 +55,7 @@ changelog:
       - "^docs:"
       - "^test:"
 
-homebrews:
+brews:
   - name: agentsecrets
     repository:
       owner: The-17
