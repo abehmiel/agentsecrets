@@ -33,11 +33,31 @@ Your agent says **"use STRIPE_KEY"**. AgentSecrets resolves the real value from 
 
 ---
 
-## Quick Start
+## Installation
 
+**macOS / Linux (One-liner):**
 ```bash
-# Install
+curl -sSL https://get.agentsecrets.com | sh
+```
+
+**Homebrew:**
+```bash
+brew install The-17/tap/agentsecrets
+```
+
+**Python (pip):**
+```bash
 pip install agentsecrets
+```
+
+**Go (source):**
+```bash
+go install github.com/The-17/agentsecrets/cmd/agentsecrets@latest
+```
+
+---
+
+## Quick Start
 
 # Create account + encryption keys
 agentsecrets init
