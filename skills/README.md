@@ -12,37 +12,61 @@ Skills teach AI assistants how to:
 
 ## Available Skills
 
-### Claude (MCP)
+### Claude Code
 
-**File**: `claude/SKILL.md`
+**Directory**: `claude/`
 
-Teaches Claude how to use AgentSecrets in computer use mode. When users ask for help with deployments, environment setup, or secrets, Claude knows to use AgentSecrets commands.
+A router + sub-skills suite for Claude Code custom commands. Auto-detects credential needs (`.env` files, hardcoded keys, auth errors) and dispatches to focused sub-skills.
 
-**Key Features**:
-- Zero-knowledge: Claude never sees secret values
-- Workflow automation: Pull secrets, switch environments
-- Code generation: Write code using environment variables
-- Security first: Always reference secrets by key, never value
+**Files:**
+- `agentsecrets.md` — Router that auto-detects credential needs and dispatches
+- `agentsecrets-setup.md` — Installation & first-time setup
+- `agentsecrets-ops.md` — Secrets lifecycle (list, set, diff, push, pull, delete)
+- `agentsecrets-call.md` — Authenticated API calls (6 auth styles + proxy)
+- `agentsecrets-code.md` — Secure coding patterns & credential hygiene
+
+**Install globally (all projects):**
+```bash
+cp skills/claude/*.md ~/.claude/commands/
+```
+
+**Install per-project:**
+```bash
+cp skills/claude/*.md .claude/commands/
+```
+
+### OpenClaw
+
+**File**: `../integrations/openclaw/SKILL.md`
+
+Native skill + exec provider for OpenClaw agents. Full credential lifecycle management with step-by-step operational guide.
 
 ### ChatGPT (Custom Instructions)
 
-**File**: `chatgpt/custom_instructions.md` (coming soon)
+**Status**: Planned
 
 Custom instructions for ChatGPT to use AgentSecrets in Code Interpreter or when helping with deployments.
 
 ### GitHub Copilot
 
-**File**: `copilot/integration.md` (coming soon)
+**Status**: Planned
 
 Instructions for integrating AgentSecrets into GitHub Copilot workflows.
 
 ## Using These Skills
 
-### For Claude
+### For Claude Code
 
-1. The Claude skill is in `claude/SKILL.md`
-2. When using Claude with computer use, it will automatically recognize AgentSecrets commands
-3. You can also manually reference this skill when asking Claude for help
+1. Copy the skill files to your Claude Code commands directory:
+   - **Global** (all projects): `cp skills/claude/*.md ~/.claude/commands/`
+   - **Per-project**: `cp skills/claude/*.md .claude/commands/`
+2. The router skill auto-detects credential needs and dispatches to sub-skills
+3. You can also invoke explicitly with `/agentsecrets` in Claude Code
+
+### For OpenClaw
+
+1. Install via ClawHub: `claw install SteppaCodes/agentsecrets`
+2. Or copy `integrations/openclaw/SKILL.md` to your OpenClaw skills directory
 
 ### For Other AI Platforms
 
